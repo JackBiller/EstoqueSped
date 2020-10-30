@@ -468,16 +468,18 @@ function carregarGradeEstoque() {
 
 	// Adiconar linhas do 0200
 	let cod0205 = 0;
-	refProdutoFinal_Global = refProdutoFinal_Global.concat(prod_0200_add);
-	refProdutoFinal_Global = refProdutoFinal_Global.map(l => ''
-		+ `|${l.REG}|${l.COD_ITEM}|${l.DESCR_ITEM}|${l.COD_BARRA}|${l.COD_ANT_ITEM}|${l.UNID_INV}|${l.TIPO_ITEM}`
-		+ `|${l.COD_NCM}|${l.EX_IPI}|${l.COD_GEN}|${l.COD_LST}|${l.ALIQ_ICMS}|${l.CEST}|`
-		+ ((l['0205'] || '') == '' ? '' : '\n'
-			+ l['0205'].map(s => (cod0205++, '')
-				+ `|${s.REG}|${s.DESCR_ANT_ITEM}|${s.DT_INI}|${s.DT_FIM}|${s.COD_ANT_ITEM}|`
-			).join('\n')
+	refProdutoFinal_Global = prod_0200_add.concat(refProdutoFinal_Global);
+	refProdutoFinal_Global = refProdutoFinal_Global
+		.filter((v,i,a) => a.map(t => t.COD_ITEM).indexOf(v.COD_ITEM) == i)
+		.map(l => ''
+			+ `|${l.REG}|${l.COD_ITEM}|${l.DESCR_ITEM}|${l.COD_BARRA}|${l.COD_ANT_ITEM}|${l.UNID_INV}|${l.TIPO_ITEM}`
+			+ `|${l.COD_NCM}|${l.EX_IPI}|${l.COD_GEN}|${l.COD_LST}|${l.ALIQ_ICMS}|${l.CEST}|`
+			+ ((l['0205'] || '') == '' ? '' : '\n'
+				+ l['0205'].map(s => (cod0205++, '')
+					+ `|${s.REG}|${s.DESCR_ANT_ITEM}|${s.DT_INI}|${s.DT_FIM}|${s.COD_ANT_ITEM}|`
+				).join('\n')
+			)
 		)
-	)
 	// refProdutoFinal_Global = refProdutoFinal_Global.map(l => ''
 	// 	+ `|${l.REG}|${l.COD_ITEM}|${l.DESCR_ITEM}|${l.COD_BARRA}|${l.COD_ANT_ITEM}|${l.UNID_INV}|${l.TIPO_ITEM}`
 	// 	+ `|${l.COD_NCM}|${l.EX_IPI}|${l.COD_GEN}|${l.COD_LST}|${l.ALIQ_ICMS}|${l.CEST}|`
@@ -540,7 +542,8 @@ function carregarGradeEstoque() {
 	].concat(
 		estoque.map(e => ''
 			+ '|H010|' + e.COD_ITEM + '|' 
-			+ (((e.UNID || '') == '') ? 'UN' : e.UNID) + '|' 
+			// + (((e.UNID || '') == '') ? 'UN' : e.UNID) + '|' 
+			+ (((e.UNID_INV || '') == '') ? 'UN' : e.UNID_INV) + '|' 
 			+ String(parseFloat(e.SALDO.toFixed(2))).replace('.',',') + '|' 
 			+ String(parseFloat(e.UNITARIO.toFixed(2))).replace('.',',') + '|' 
 			+ String(parseFloat(e.TOTAL.toFixed(2))).replace('.',',') + '|0|||0|' 
@@ -555,6 +558,21 @@ function carregarGradeEstoque() {
 	addLineArquivoSped('H', arquivoReferente_Global.map(l => l.split('|')[1]).indexOf('H001'), linhaH);
 
 
+	let totBlock0 = arquivoReferente_Global.filter(l => l.indexOf('|0') == 0).length + cod0205;
+
+	arquivoReferente_Global.forEach((l,i) => {
+		if (l.indexOf('|9900|H001|') == 0 && arquivoReferente_Global[i+1].indexOf('|9900|H005|') < 0) { 
+			arquivoReferente_Global.splice(i+1, 0, '|9900|H005|1|');
+		}
+		if (l.indexOf('|9900|H005|') == 0 && arquivoReferente_Global[i+1].indexOf('|9900|H010|') < 0) { 
+			arquivoReferente_Global.splice(i+1, 0, '|9900|H010|' + estoque.length + '|');
+		}
+	});
+
+	let tot9900 = arquivoReferente_Global.filter(l => l.indexOf('|9900') == 0).length;
+	let totBlock9 = arquivoReferente_Global.filter(l => l.indexOf('|9') == 0).length;
+
+
 	arquivoReferente_Global.forEach((l,i) => {
 		if (l.indexOf('|9900|H010|') == 0) { 
 			arquivoReferente_Global[i] = '|9900|H010|' + estoque.length + '|';
@@ -564,6 +582,18 @@ function carregarGradeEstoque() {
 		}
 		if (l.indexOf('|9900|0205|') == 0) { 
 			arquivoReferente_Global[i] = '|9900|0205|' + cod0205 + '|';
+		}
+		if (l.indexOf('|9900|9900|') == 0) { 
+			arquivoReferente_Global[i] = '|9900|9900|' + tot9900 + '|';
+		}
+		if (l.indexOf('|0990|') == 0) { 
+			arquivoReferente_Global[i] = '|0990|' + totBlock0 + '|';
+		}
+		if (l.indexOf('|9990|') == 0) { 
+			arquivoReferente_Global[i] = '|9990|' + totBlock9 + '|';
+		}
+		if (l.indexOf('|9999|') == 0) { 
+			arquivoReferente_Global[i] = '|9999|' + (arquivoReferente_Global.length+cod0205-1) + '|';
 		}
 	});
 
